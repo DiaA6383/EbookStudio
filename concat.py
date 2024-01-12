@@ -4,57 +4,46 @@ import re
 from tqdm import tqdm
 
 def sort_key(file_path):
-    """
-    Custom sorting function to sort files first by disk number and then alphabetically.
-    """
+    # Extracting disc number and file name for sorting
     match = re.search(r'Disc (\d+)', file_path)
-    if match:
-        return (int(match.group(1)), file_path)
-    return (0, file_path)
+    disc_number = int(match.group(1)) if match else 0
+    file_name = os.path.basename(file_path)
+    return (disc_number, file_name)
 
 def concatenate_audiobooks(input_directory, output_file):
-    """
-    Concatenates all MP3 files in the given directory and its subdirectories into a single MP3 file.
-
-    Parameters:
-    input_directory (str): The path to the directory containing the audiobook chapters.
-    output_file (str): The path where the concatenated audiobook file will be saved.
-
-    Returns:
-    str: The path to the concatenated audiobook file.
-    """
+    concatenated = AudioSegment.empty()
     files_to_concatenate = []
+
+    # Walking through the directory and adding files to the list
     for subdir, dirs, files in os.walk(input_directory):
-        for file in files:
+        for file in sorted(files, key=lambda x: (sort_key(os.path.join(subdir, x)))):
             if file.endswith(".mp3"):
                 files_to_concatenate.append(os.path.join(subdir, file))
 
-    files_to_concatenate.sort(key=sort_key)
-
-    # Display the concatenation order
-    print("The following files will be concatenated in this order:")
-    for file in files_to_concatenate:
-        print(file)
-
-    # Ask user to proceed or not
-    proceed = input("Do you want to proceed with concatenation? (yes/no): ").strip().lower()
-    if proceed != 'yes':
-        print("Concatenation cancelled.")
-        return
-
-    concatenated = AudioSegment.empty()
-    for file in tqdm(files_to_concatenate, desc="Concatenating files", unit="file"):
-        audiobook_segment = AudioSegment.from_mp3(file)
-        concatenated += audiobook_segment
+    # Enhanced progress bar
+    with tqdm(total=len(files_to_concatenate), desc="Concatenating files", unit="file") as pbar:
+        for file in files_to_concatenate:
+            audiobook_segment = AudioSegment.from_mp3(file)
+            concatenated += audiobook_segment
+            pbar.update(1)
 
     concatenated.export(output_file, format="mp3")
     return output_file
 
+# ASCII Art
+print(r"""
+   ____              _                                           _ _  
+ |  _ \            | |                                         | | | 
+ | |_) | ___   ___ | | _____    __ _ _ __ ___    ___ ___   ___ | | | 
+ |  _ < / _ \ / _ \| |/ / __|  / _` | '__/ _ \  / __/ _ \ / _ \| | | 
+ | |_) | (_) | (_) |   <\__ \ | (_| | | |  __/ | (_| (_) | (_) | |_| 
+ |____/ \___/ \___/|_|\_\___/  \__,_|_|  \___|  \___\___/ \___/|_(_) 
+                                                                     
+""")
+
 # Prompt for input directory and output file path
-input_directory = input("Enter the path of the directory containing the audiobook chapters: ")
-output_file_path = input("Enter the path for the output concatenated file (including filename): ")
+input_directory = input("Enter the path of the input directory: ")
+output_file = input("Enter the path of the output file (including .mp3): ")
 
 # Call the function
-concatenated_file_path = concatenate_audiobooks(input_directory, output_file_path)
-if concatenated_file_path:
-    print(f"Concatenated audiobook saved to: {concatenated_file_path}")
+concatenate_audiobooks(input_directory, output_file)
