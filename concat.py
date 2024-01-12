@@ -41,8 +41,8 @@ output_directory = input("Enter the path for the output files: ")
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
-# Process each subfolder
-for folder in os.listdir(input_directory):
+# Process each subfolder in sorted order
+for folder in sorted(os.listdir(input_directory)):
     folder_path = os.path.join(input_directory, folder)
     if os.path.isdir(folder_path):
         output_file = os.path.join(output_directory, f"concatenated_{folder}.mp3")
